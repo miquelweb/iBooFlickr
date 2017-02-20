@@ -27,8 +27,11 @@ class ViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+               
         searchFlickr(currentPage)
+    }
+    override func viewWillAppear(animated: Bool) {
+        table.reloadData()
     }
 
     override func didReceiveMemoryWarning() {
@@ -52,7 +55,7 @@ class ViewController: UIViewController {
                         if let data = data, let response = try NSJSONSerialization.JSONObjectWithData(data, options: NSJSONReadingOptions(rawValue: 0)) as? [String: AnyObject]{
                             let photos = response["photos"] as? [String: AnyObject]
                             let photosData = photos!["photo"] as! NSArray
-                            //print ("photoData:"+photoData)
+                            
                             NSOperationQueue.mainQueue().addOperationWithBlock{
                                 var n:Int = 0
                                 while(n<photosData.count){
@@ -86,7 +89,9 @@ class ViewController: UIViewController {
             let indexPath:NSIndexPath = sender as! NSIndexPath
             let destination:DetailViewController = segue.destinationViewController as! DetailViewController
             let photo = photosArray[indexPath.row]
+            destination.delegate = self
             destination.photo=photo
+            destination.position = indexPath.row
         }
     }
 
@@ -107,21 +112,35 @@ extension ViewController:UITableViewDataSource{
             return cell
         }
         else{
+            let cell = tableView.dequeueReusableCellWithIdentifier("PhotoCell", forIndexPath: indexPath) as UITableViewCell!
             
-        
-            let cell = tableView.dequeueReusableCellWithIdentifier("PhotoCell", forIndexPath: indexPath)
-            let photo = photosArray[indexPath.row]
+           let photo = photosArray[indexPath.row]
             let photoImageView = cell.viewWithTag(1) as! UIImageView
             
             
             let switchElement = cell.viewWithTag(2) as! UISwitch
+            switchElement.on = photo.state
             switchElement.addTarget(self, action: #selector(ViewController.switchPress(_:)), forControlEvents: UIControlEvents.ValueChanged)
-
-
-            photoImageView.image=UIImage(data: NSData(contentsOfURL: NSURL(string: "\("https://farm\(photo.farm).staticflickr.com/\(photo.server)/\(photo.ide)_\(photo.secret).jpg")")!)!)
             
+            let urlString:String =  "https://farm\(photo.farm).staticflickr.com/\(photo.server)/\(photo.ide)_\(photo.secret).jpg"
+
+            NSURLSession.sharedSession().dataTaskWithURL(NSURL(string: urlString)!, completionHandler: { (data, response, error) -> Void in
+                
+                if error != nil {
+                    print(error)
+                    return
+                }
+                dispatch_async(dispatch_get_main_queue(), { () -> Void in
+                    let image = UIImage(data: data!)
+                    photoImageView.image = image
+                })
+                
+            }).resume()
             return cell
         }
+    }
+    func tableView(tableView: UITableView, heightForRowAtIndexPath indexPath: NSIndexPath) -> CGFloat {
+        return 85;
     }
     func switchPress(sender:UISwitch){
         let cell = sender.superview?.superview as! UITableViewCell
@@ -136,4 +155,12 @@ extension ViewController:UITableViewDelegate{
         self.performSegueWithIdentifier("detailSegue", sender: indexPath)
     }
 }
-
+extension ViewController:DetailViewControllerDelegate{
+    func changeSwift(photo: Photo, position: Int) {
+        // do stuff like updating the UI
+        photosArray[position] = photo
+        dispatch_async(dispatch_get_main_queue(), { () -> Void in
+            self.table.reloadData()
+        })
+    }
+}

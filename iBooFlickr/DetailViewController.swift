@@ -7,12 +7,16 @@
 //
 
 import UIKit
-
+protocol DetailViewControllerDelegate: class {
+    func changeSwift(photo: Photo, position: Int)
+}
 class DetailViewController: UIViewController {
+    weak var delegate:ViewController!
     let defaultSeason = NSURLSession(configuration: NSURLSessionConfiguration.defaultSessionConfiguration())
     
     var dataTask: NSURLSessionDataTask?
     var photo: Photo = Photo()
+    var position:Int = 0
 
     @IBOutlet weak var imgPhoto: UIImageView!
     @IBOutlet weak var statusSwitch: UISwitch!
@@ -30,6 +34,11 @@ class DetailViewController: UIViewController {
         // Dispose of any resources that can be recreated.
     }
     
+    @IBAction func change(sender: AnyObject) {
+        photo.state = sender.on
+        print(sender.on)
+        delegate?.changeSwift(photo,position: position)
+    }
 
     /*
     // MARK: - Navigation
